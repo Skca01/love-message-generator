@@ -20,10 +20,6 @@ try {
 const db = firebase.firestore();
 const storage = firebase.storage();
 
-// Global variables
-let customAudio = null;
-let messageData = null;  // Add this to store the message data
-
 // DOM Elements for settings
 const settingsPanel = document.getElementById('settings-panel');
 const introMessageInput = document.getElementById('intro-message');
@@ -311,20 +307,22 @@ if (messageId) {
     loadingDiv.textContent = 'Loading your message...';
     document.body.appendChild(loadingDiv);
 
+    let customAudio = null;
+
     db.collection('messages').doc(messageId).get()
         .then((doc) => {
             if (doc.exists) {
-                messageData = doc.data();  // Store the message data
-                console.log("Loaded data from Firebase:", messageData);
+                const data = doc.data();
+                console.log("Loaded data from Firebase:", data);
                 
                 // Update custom messages
-                customIntroMessage = messageData.introMessage || customIntroMessage;
-                customEndingMessage = messageData.endingMessage || customEndingMessage;
+                customIntroMessage = data.introMessage || customIntroMessage;
+                customEndingMessage = data.endingMessage || customEndingMessage;
                 
                 console.log("Updated custom messages:", {
                     intro: customIntroMessage,
                     ending: customEndingMessage,
-                    musicSource: messageData.musicSource
+                    musicSource: data.musicSource
                 });
 
                 // Update start screen message
@@ -333,10 +331,33 @@ if (messageId) {
                     hintText.textContent = customIntroMessage;
                 }
 
-                // Setup audio for later use
-                if (messageData.musicSource === 'upload' && messageData.mp3Url) {
-                    customAudio = setupAudio(messageData);
-                }
+                // Setup audio for start button
+                startBtn.addEventListener('click', async () => {
+                    try {
+                        // Resume audio context if it was suspended
+                        if (audioCtx.state === 'suspended') {
+                            await audioCtx.resume();
+                        }
+
+                        if (data.musicSource === 'upload' && data.mp3Url) {
+                            console.log('Playing uploaded MP3:', data.mp3Url);
+                            customAudio = setupAudio(data);
+                            if (customAudio) {
+                                await customAudio.play();
+                                console.log('Custom audio started playing');
+                            }
+                        } else {
+                            setupAudio(data);
+                        }
+                    } catch (error) {
+                        console.error('Error playing audio:', error);
+                        // Fallback to default audio
+                        const defaultAudio = document.getElementById('background-music');
+                        if (defaultAudio) {
+                            defaultAudio.play().catch(console.error);
+                        }
+                    }
+                });
                 
                 // Hide settings panel and loading message
                 settingsPanel.style.display = 'none';
@@ -867,45 +888,21 @@ function triggerAnimation() {
     }
 }
 
-startBtn.addEventListener('click', async () => {
-    try {
-        // Resume audio context if it was suspended
-        if (audioCtx.state === 'suspended') {
-            await audioCtx.resume();
-        }
+startBtn.addEventListener('click', () => {
+    startScreen.style.display = 'none';
+    audioControl.style.display = 'block';
+    responseButtons.style.display = 'block';
 
-        // Try to play custom audio if available
-        if (messageData && messageData.musicSource === 'upload' && messageData.mp3Url) {
-            if (!customAudio) {
-                customAudio = setupAudio(messageData);
-            }
-            if (customAudio) {
-                try {
-                    await customAudio.play();
-                    console.log('Custom audio started playing');
-                } catch (error) {
-                    console.error('Error playing custom audio:', error);
-                    // Fallback to default audio
-                    const defaultAudio = document.getElementById('background-music');
-                    if (defaultAudio) {
-                        defaultAudio.play().catch(console.error);
-                    }
-                }
-            }
-        } else {
-            // Use default audio if no custom audio
-            const defaultAudio = document.getElementById('background-music');
-            if (defaultAudio) {
-                defaultAudio.play().catch(console.error);
-            }
+    // If YouTube is not initialized, play default audio
+    const youtubePlayer = document.getElementById('youtube-player');
+    if (!youtubePlayer || !youtubePlayer.querySelector('iframe')) {
+        const defaultAudio = document.getElementById('background-music');
+        if (defaultAudio) {
+            defaultAudio.play();
         }
-
-        startScreen.style.display = 'none';
-        responseButtons.style.display = 'block';
-        triggerAnimation();
-    } catch (error) {
-        console.error('Error in start button handler:', error);
     }
+    
+    triggerAnimation();
 });
 
 audioControl.addEventListener('click', () => {
