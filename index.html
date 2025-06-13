@@ -20,8 +20,20 @@
                 <input type="text" id="ending-message" placeholder="Always yours, [Your Name] ❤️">
             </div>
             <div class="form-group">
+                <label for="music-source">Choose Music Source:</label>
+                <select id="music-source" class="music-select">
+                    <option value="youtube">YouTube Link</option>
+                    <option value="upload">Upload MP3</option>
+                </select>
+            </div>
+            <div id="youtube-input" class="form-group">
                 <label for="youtube-link">YouTube Music Link:</label>
                 <input type="text" id="youtube-link" placeholder="https://www.youtube.com/watch?v=...">
+            </div>
+            <div id="upload-input" class="form-group" style="display: none;">
+                <label for="mp3-upload">Upload MP3 File:</label>
+                <input type="file" id="mp3-upload" accept=".mp3" class="file-input">
+                <div id="upload-status" class="upload-status"></div>
             </div>
             <button id="save-settings" class="save-btn">Save & Generate Link</button>
         </div>
@@ -47,8 +59,9 @@
     </div>
 
     <!-- Firebase SDK -->
-    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-storage-compat.js"></script>
     
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r134/three.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/three@0.134.0/examples/js/controls/OrbitControls.js"></script>
