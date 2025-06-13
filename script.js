@@ -129,6 +129,7 @@ function updateCenterMessage() {
 
 // Function to handle audio
 function setupAudio(data) {
+    console.log('Setting up audio with data:', data);
     let youtubePlayer = null;
     let youtubeInitialized = false;
 
@@ -236,6 +237,7 @@ function setupAudio(data) {
             }, 5000);
         }
     } else if (data.musicSource === 'upload' && data.mp3Url) {
+        console.log('Setting up uploaded MP3:', data.mp3Url);
         try {
             // Create new audio element for uploaded MP3
             const audio = document.createElement('audio');
@@ -246,6 +248,11 @@ function setupAudio(data) {
             // Add error handling
             audio.onerror = (e) => {
                 console.error('Error loading custom audio:', e);
+                console.error('Audio error details:', {
+                    error: audio.error,
+                    networkState: audio.networkState,
+                    readyState: audio.readyState
+                });
                 if (defaultAudio) {
                     defaultAudio.play().catch(console.error);
                 }
@@ -253,7 +260,10 @@ function setupAudio(data) {
 
             // Add success handling
             audio.oncanplaythrough = () => {
-                audio.play().catch(error => {
+                console.log('Custom audio can play through');
+                audio.play().then(() => {
+                    console.log('Custom audio started playing successfully');
+                }).catch(error => {
                     console.error('Error playing custom audio:', error);
                     if (defaultAudio) {
                         defaultAudio.play().catch(console.error);
@@ -261,16 +271,25 @@ function setupAudio(data) {
                 });
             };
 
+            // Add loading progress
+            audio.onloadstart = () => console.log('Custom audio loading started');
+            audio.onprogress = () => console.log('Custom audio loading progress');
+            audio.onloadeddata = () => console.log('Custom audio data loaded');
+            audio.onloadedmetadata = () => console.log('Custom audio metadata loaded');
+
             document.body.appendChild(audio);
+            console.log('Custom audio element added to document');
         } catch (error) {
             console.error('Error setting up custom audio:', error);
             if (defaultAudio) {
                 defaultAudio.play().catch(console.error);
             }
         }
-    } else if (defaultAudio) {
-        // Use default audio as fallback
-        defaultAudio.play().catch(console.error);
+    } else {
+        console.log('Using default audio as fallback');
+        if (defaultAudio) {
+            defaultAudio.play().catch(console.error);
+        }
     }
 }
 
