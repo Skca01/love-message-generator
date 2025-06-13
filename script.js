@@ -22,6 +22,7 @@ const storage = firebase.storage();
 
 // Global variables
 let customAudio = null;
+let messageData = null;  // Add this to store the message data
 
 // DOM Elements for settings
 const settingsPanel = document.getElementById('settings-panel');
@@ -313,17 +314,17 @@ if (messageId) {
     db.collection('messages').doc(messageId).get()
         .then((doc) => {
             if (doc.exists) {
-                const data = doc.data();
-                console.log("Loaded data from Firebase:", data);
+                messageData = doc.data();  // Store the message data
+                console.log("Loaded data from Firebase:", messageData);
                 
                 // Update custom messages
-                customIntroMessage = data.introMessage || customIntroMessage;
-                customEndingMessage = data.endingMessage || customEndingMessage;
+                customIntroMessage = messageData.introMessage || customIntroMessage;
+                customEndingMessage = messageData.endingMessage || customEndingMessage;
                 
                 console.log("Updated custom messages:", {
                     intro: customIntroMessage,
                     ending: customEndingMessage,
-                    musicSource: data.musicSource
+                    musicSource: messageData.musicSource
                 });
 
                 // Update start screen message
@@ -333,8 +334,8 @@ if (messageId) {
                 }
 
                 // Setup audio for later use
-                if (data.musicSource === 'upload' && data.mp3Url) {
-                    customAudio = setupAudio(data);
+                if (messageData.musicSource === 'upload' && messageData.mp3Url) {
+                    customAudio = setupAudio(messageData);
                 }
                 
                 // Hide settings panel and loading message
@@ -874,16 +875,21 @@ startBtn.addEventListener('click', async () => {
         }
 
         // Try to play custom audio if available
-        if (customAudio) {
-            try {
-                await customAudio.play();
-                console.log('Custom audio started playing');
-            } catch (error) {
-                console.error('Error playing custom audio:', error);
-                // Fallback to default audio
-                const defaultAudio = document.getElementById('background-music');
-                if (defaultAudio) {
-                    defaultAudio.play().catch(console.error);
+        if (messageData && messageData.musicSource === 'upload' && messageData.mp3Url) {
+            if (!customAudio) {
+                customAudio = setupAudio(messageData);
+            }
+            if (customAudio) {
+                try {
+                    await customAudio.play();
+                    console.log('Custom audio started playing');
+                } catch (error) {
+                    console.error('Error playing custom audio:', error);
+                    // Fallback to default audio
+                    const defaultAudio = document.getElementById('background-music');
+                    if (defaultAudio) {
+                        defaultAudio.play().catch(console.error);
+                    }
                 }
             }
         } else {
