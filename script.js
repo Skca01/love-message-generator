@@ -34,26 +34,53 @@ let customYoutubeLink = "";
 
 // Load custom settings if viewing a shared link
 if (messageId) {
+    console.log("Loading message with ID:", messageId);
     db.collection('messages').doc(messageId).get()
         .then((doc) => {
             if (doc.exists) {
                 const data = doc.data();
+                console.log("Loaded data:", data);
+                
                 customIntroMessage = data.introMessage || customIntroMessage;
                 customEndingMessage = data.endingMessage || customEndingMessage;
                 customYoutubeLink = data.youtubeLink || "";
                 
+                console.log("Custom messages set to:", {
+                    intro: customIntroMessage,
+                    ending: customEndingMessage,
+                    youtube: customYoutubeLink
+                });
+                
                 if (customYoutubeLink) {
-                    // Create YouTube iframe
-                    const iframe = document.createElement('iframe');
-                    iframe.width = '0';
-                    iframe.height = '0';
-                    iframe.src = `https://www.youtube.com/embed/${getYouTubeId(customYoutubeLink)}?autoplay=1&controls=0`;
-                    iframe.allow = 'accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture';
-                    document.body.appendChild(iframe);
+                    const videoId = getYouTubeId(customYoutubeLink);
+                    console.log("YouTube video ID:", videoId);
+                    if (videoId) {
+                        // Create YouTube iframe
+                        const iframe = document.createElement('iframe');
+                        iframe.width = '0';
+                        iframe.height = '0';
+                        iframe.src = `https://www.youtube.com/embed/${videoId}?autoplay=1&controls=0&enablejsapi=1`;
+                        iframe.allow = 'accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture';
+                        iframe.id = 'youtube-player';
+                        document.body.appendChild(iframe);
+                        
+                        // Add event listener for when iframe is ready
+                        window.onYouTubeIframeAPIReady = function() {
+                            console.log("YouTube API Ready");
+                        };
+                    }
                 }
                 
                 // Hide settings panel when viewing shared link
                 settingsPanel.style.display = 'none';
+                
+                // Recreate center message with new custom messages
+                if (centerSprite) {
+                    heartGroup.remove(centerSprite);
+                }
+                createCenterMessage();
+            } else {
+                console.log("No such document!");
             }
         })
         .catch((error) => {
@@ -66,6 +93,7 @@ if (messageId) {
 
 // Helper function to extract YouTube video ID
 function getYouTubeId(url) {
+    if (!url) return null;
     const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|&v=)([^#&?]*).*/;
     const match = url.match(regExp);
     return (match && match[2].length === 11) ? match[2] : null;
@@ -77,6 +105,12 @@ saveSettingsBtn.addEventListener('click', async () => {
     const endingMessage = endingMessageInput.value.trim() || customEndingMessage;
     const youtubeLink = youtubeLinkInput.value.trim();
 
+    console.log("Saving settings:", {
+        introMessage,
+        endingMessage,
+        youtubeLink
+    });
+
     try {
         const docRef = await db.collection('messages').add({
             introMessage,
@@ -84,6 +118,8 @@ saveSettingsBtn.addEventListener('click', async () => {
             youtubeLink,
             createdAt: firebase.firestore.FieldValue.serverTimestamp()
         });
+
+        console.log("Document written with ID:", docRef.id);
 
         const shareUrl = `${window.location.origin}${window.location.pathname}?id=${docRef.id}`;
         generatedLinkInput.value = shareUrl;
