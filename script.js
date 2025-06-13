@@ -144,6 +144,12 @@ function setupAudio(data) {
         existingPlayer.remove();
     }
 
+    // Remove existing custom audio if any
+    const existingCustomAudio = document.getElementById('custom-music');
+    if (existingCustomAudio) {
+        existingCustomAudio.remove();
+    }
+
     if (data.musicSource === 'youtube' && data.youtubeLink) {
         const videoId = getYouTubeId(data.youtubeLink);
         if (videoId) {
@@ -230,16 +236,41 @@ function setupAudio(data) {
             }, 5000);
         }
     } else if (data.musicSource === 'upload' && data.mp3Url) {
-        // Create new audio element for uploaded MP3
-        const audio = document.createElement('audio');
-        audio.id = 'custom-music';
-        audio.loop = true;
-        audio.src = data.mp3Url;
-        document.body.appendChild(audio);
-        audio.play();
+        try {
+            // Create new audio element for uploaded MP3
+            const audio = document.createElement('audio');
+            audio.id = 'custom-music';
+            audio.loop = true;
+            audio.src = data.mp3Url;
+            
+            // Add error handling
+            audio.onerror = (e) => {
+                console.error('Error loading custom audio:', e);
+                if (defaultAudio) {
+                    defaultAudio.play().catch(console.error);
+                }
+            };
+
+            // Add success handling
+            audio.oncanplaythrough = () => {
+                audio.play().catch(error => {
+                    console.error('Error playing custom audio:', error);
+                    if (defaultAudio) {
+                        defaultAudio.play().catch(console.error);
+                    }
+                });
+            };
+
+            document.body.appendChild(audio);
+        } catch (error) {
+            console.error('Error setting up custom audio:', error);
+            if (defaultAudio) {
+                defaultAudio.play().catch(console.error);
+            }
+        }
     } else if (defaultAudio) {
         // Use default audio as fallback
-        defaultAudio.play();
+        defaultAudio.play().catch(console.error);
     }
 }
 
@@ -282,8 +313,29 @@ if (messageId) {
                     hintText.textContent = customIntroMessage;
                 }
 
-                // Setup audio
-                setupAudio(data);
+                // Create play button for shared link
+                const playButton = document.createElement('button');
+                playButton.textContent = '▶️ Play Music';
+                playButton.style.position = 'fixed';
+                playButton.style.bottom = '20px';
+                playButton.style.left = '50%';
+                playButton.style.transform = 'translateX(-50%)';
+                playButton.style.padding = '10px 20px';
+                playButton.style.borderRadius = '20px';
+                playButton.style.border = 'none';
+                playButton.style.background = 'rgba(255, 102, 178, 0.9)';
+                playButton.style.color = 'white';
+                playButton.style.cursor = 'pointer';
+                playButton.style.zIndex = '1000';
+                playButton.style.fontSize = '16px';
+                playButton.style.boxShadow = '0 2px 5px rgba(0,0,0,0.2)';
+                document.body.appendChild(playButton);
+
+                // Setup audio with play button
+                playButton.addEventListener('click', () => {
+                    setupAudio(data);
+                    playButton.style.display = 'none';
+                });
                 
                 // Hide settings panel and loading message
                 settingsPanel.style.display = 'none';
