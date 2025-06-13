@@ -18,12 +18,17 @@ try {
 }
 
 const db = firebase.firestore();
+const storage = firebase.storage();
 
 // DOM Elements for settings
 const settingsPanel = document.getElementById('settings-panel');
 const introMessageInput = document.getElementById('intro-message');
 const endingMessageInput = document.getElementById('ending-message');
-const youtubeLinkInput = document.getElementById('youtube-link');
+const musicSourceSelect = document.getElementById('music-source');
+const youtubeInput = document.getElementById('youtube-input');
+const uploadInput = document.getElementById('upload-input');
+const mp3Upload = document.getElementById('mp3-upload');
+const uploadStatus = document.getElementById('upload-status');
 const saveSettingsBtn = document.getElementById('save-settings');
 const shareLinkDiv = document.getElementById('share-link');
 const generatedLinkInput = document.getElementById('generated-link');
@@ -37,6 +42,47 @@ const messageId = urlParams.get('id');
 let customIntroMessage = "Do I still have a chance?💕";
 let customEndingMessage = "I know its a misunderstanding\nbut my heart is still yours.\nSuwayig \"No\" gaan tikag singko hahaha";
 let customYoutubeLink = "";
+
+// Handle music source selection
+musicSourceSelect.addEventListener('change', () => {
+    if (musicSourceSelect.value === 'youtube') {
+        youtubeInput.style.display = 'block';
+        uploadInput.style.display = 'none';
+    } else {
+        youtubeInput.style.display = 'none';
+        uploadInput.style.display = 'block';
+    }
+});
+
+// Handle MP3 upload
+let uploadedMp3Url = null;
+mp3Upload.addEventListener('change', async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    if (file.type !== 'audio/mpeg') {
+        uploadStatus.textContent = 'Please upload an MP3 file';
+        uploadStatus.className = 'upload-status error';
+        return;
+    }
+
+    try {
+        uploadStatus.textContent = 'Uploading...';
+        uploadStatus.className = 'upload-status uploading';
+
+        const storageRef = storage.ref();
+        const fileRef = storageRef.child(`music/${Date.now()}_${file.name}`);
+        const snapshot = await fileRef.put(file);
+        uploadedMp3Url = await snapshot.ref.getDownloadURL();
+
+        uploadStatus.textContent = 'Upload successful!';
+        uploadStatus.className = 'upload-status success';
+    } catch (error) {
+        console.error('Upload error:', error);
+        uploadStatus.textContent = 'Upload failed. Please try again.';
+        uploadStatus.className = 'upload-status error';
+    }
+});
 
 // Function to update the center message
 function updateCenterMessage() {
@@ -82,7 +128,7 @@ function updateCenterMessage() {
 }
 
 // Function to handle audio
-function setupAudio(youtubeLink) {
+function setupAudio(data) {
     let youtubePlayer = null;
     let youtubeInitialized = false;
 
@@ -98,8 +144,8 @@ function setupAudio(youtubeLink) {
         existingPlayer.remove();
     }
 
-    if (youtubeLink) {
-        const videoId = getYouTubeId(youtubeLink);
+    if (data.musicSource === 'youtube' && data.youtubeLink) {
+        const videoId = getYouTubeId(data.youtubeLink);
         if (videoId) {
             // Create YouTube player container
             const playerDiv = document.createElement('div');
@@ -183,6 +229,17 @@ function setupAudio(youtubeLink) {
                 }
             }, 5000);
         }
+    } else if (data.musicSource === 'upload' && data.mp3Url) {
+        // Create new audio element for uploaded MP3
+        const audio = document.createElement('audio');
+        audio.id = 'custom-music';
+        audio.loop = true;
+        audio.src = data.mp3Url;
+        document.body.appendChild(audio);
+        audio.play();
+    } else if (defaultAudio) {
+        // Use default audio as fallback
+        defaultAudio.play();
     }
 }
 
@@ -212,12 +269,11 @@ if (messageId) {
                 // Update custom messages
                 customIntroMessage = data.introMessage || customIntroMessage;
                 customEndingMessage = data.endingMessage || customEndingMessage;
-                customYoutubeLink = data.youtubeLink || "";
                 
                 console.log("Updated custom messages:", {
                     intro: customIntroMessage,
                     ending: customEndingMessage,
-                    youtube: customYoutubeLink
+                    musicSource: data.musicSource
                 });
 
                 // Update start screen message
@@ -226,8 +282,8 @@ if (messageId) {
                     hintText.textContent = customIntroMessage;
                 }
 
-                // Setup audio immediately
-                setupAudio(customYoutubeLink);
+                // Setup audio
+                setupAudio(data);
                 
                 // Hide settings panel and loading message
                 settingsPanel.style.display = 'none';
@@ -269,26 +325,31 @@ function getYouTubeId(url) {
 saveSettingsBtn.addEventListener('click', async () => {
     const introMessage = introMessageInput.value.trim() || customIntroMessage;
     const endingMessage = endingMessageInput.value.trim() || customEndingMessage;
-    const youtubeLink = youtubeLinkInput.value.trim();
+    const musicSource = musicSourceSelect.value;
+    const youtubeLink = musicSource === 'youtube' ? youtubeInput.value.trim() : '';
+    const mp3Url = musicSource === 'upload' ? uploadedMp3Url : '';
 
-    console.log("Saving settings:", {
-        introMessage,
-        endingMessage,
-        youtubeLink
-    });
+    if (musicSource === 'youtube' && !youtubeLink) {
+        alert('Please provide a YouTube link');
+        return;
+    }
+
+    if (musicSource === 'upload' && !mp3Url) {
+        alert('Please upload an MP3 file');
+        return;
+    }
 
     try {
         const docRef = await db.collection('messages').add({
             introMessage,
             endingMessage,
+            musicSource,
             youtubeLink,
+            mp3Url,
             createdAt: firebase.firestore.FieldValue.serverTimestamp()
         });
 
-        console.log("Document written with ID:", docRef.id);
-
         const shareUrl = `${window.location.origin}${window.location.pathname}?id=${docRef.id}`;
-        console.log("Generated share URL:", shareUrl);
         generatedLinkInput.value = shareUrl;
         shareLinkDiv.style.display = 'block';
     } catch (error) {
