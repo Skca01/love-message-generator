@@ -59,17 +59,9 @@ function updateCenterMessage() {
     ctx.shadowBlur = 15;
     ctx.textAlign = 'center';
     
-    // Split messages into lines and draw them
-    const introLines = customIntroMessage.split('\n');
+    // Only draw the ending message in the heart
     const endingLines = customEndingMessage.split('\n');
-    
     let y = 80;
-    introLines.forEach(line => {
-        ctx.fillText(line, 325, y);
-        y += 50;
-    });
-    
-    y += 20;
     endingLines.forEach(line => {
         ctx.fillText(line, 325, y);
         y += 50;
@@ -128,9 +120,15 @@ if (messageId) {
                 if (hintText) {
                     hintText.textContent = customIntroMessage;
                 }
-                
-                // Handle YouTube music
+
+                // Remove default audio if YouTube music is provided
                 if (customYoutubeLink) {
+                    const defaultAudio = document.getElementById('background-music');
+                    if (defaultAudio) {
+                        defaultAudio.pause();
+                        defaultAudio.remove();
+                    }
+                    
                     const videoId = getYouTubeId(customYoutubeLink);
                     console.log("Extracted YouTube video ID:", videoId);
                     
