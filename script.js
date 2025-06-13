@@ -244,6 +244,8 @@ function setupAudio(data) {
             audio.id = 'custom-music';
             audio.loop = true;
             audio.src = data.mp3Url;
+            audio.preload = 'auto';
+            audio.volume = 1.0;
             
             // Add error handling
             audio.onerror = (e) => {
@@ -261,14 +263,6 @@ function setupAudio(data) {
             // Add success handling
             audio.oncanplaythrough = () => {
                 console.log('Custom audio can play through');
-                audio.play().then(() => {
-                    console.log('Custom audio started playing successfully');
-                }).catch(error => {
-                    console.error('Error playing custom audio:', error);
-                    if (defaultAudio) {
-                        defaultAudio.play().catch(console.error);
-                    }
-                });
             };
 
             // Add loading progress
@@ -279,6 +273,9 @@ function setupAudio(data) {
 
             document.body.appendChild(audio);
             console.log('Custom audio element added to document');
+
+            // Return the audio element for later use
+            return audio;
         } catch (error) {
             console.error('Error setting up custom audio:', error);
             if (defaultAudio) {
@@ -309,6 +306,8 @@ if (messageId) {
     loadingDiv.style.zIndex = '1000';
     loadingDiv.textContent = 'Loading your message...';
     document.body.appendChild(loadingDiv);
+
+    let customAudio = null;
 
     db.collection('messages').doc(messageId).get()
         .then((doc) => {
@@ -351,9 +350,32 @@ if (messageId) {
                 document.body.appendChild(playButton);
 
                 // Setup audio with play button
-                playButton.addEventListener('click', () => {
-                    setupAudio(data);
-                    playButton.style.display = 'none';
+                playButton.addEventListener('click', async () => {
+                    try {
+                        // Resume audio context if it was suspended
+                        if (audioCtx.state === 'suspended') {
+                            await audioCtx.resume();
+                        }
+
+                        if (data.musicSource === 'upload' && data.mp3Url) {
+                            console.log('Playing uploaded MP3:', data.mp3Url);
+                            customAudio = setupAudio(data);
+                            if (customAudio) {
+                                await customAudio.play();
+                                console.log('Custom audio started playing');
+                            }
+                        } else {
+                            setupAudio(data);
+                        }
+                        playButton.style.display = 'none';
+                    } catch (error) {
+                        console.error('Error playing audio:', error);
+                        // Fallback to default audio
+                        const defaultAudio = document.getElementById('background-music');
+                        if (defaultAudio) {
+                            defaultAudio.play().catch(console.error);
+                        }
+                    }
                 });
                 
                 // Hide settings panel and loading message
