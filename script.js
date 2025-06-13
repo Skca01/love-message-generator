@@ -83,11 +83,13 @@ function updateCenterMessage() {
 
 // Function to handle audio
 function setupAudio(youtubeLink) {
-    // Remove default audio element
+    let youtubePlayer = null;
+    let youtubeInitialized = false;
+
+    // Keep default audio as fallback
     const defaultAudio = document.getElementById('background-music');
     if (defaultAudio) {
         defaultAudio.pause();
-        defaultAudio.remove();
     }
 
     // Remove existing YouTube player if any
@@ -118,45 +120,68 @@ function setupAudio(youtubeLink) {
 
             // Initialize YouTube player
             window.onYouTubeIframeAPIReady = function() {
-                new YT.Player('youtube-player', {
-                    height: '0',
-                    width: '0',
-                    videoId: videoId,
-                    playerVars: {
-                        'autoplay': 1,
-                        'controls': 0,
-                        'disablekb': 1,
-                        'enablejsapi': 1,
-                        'loop': 1,
-                        'playlist': videoId,
-                        'rel': 0, // Don't show related videos
-                        'showinfo': 0, // Don't show video title
-                        'modestbranding': 1, // Minimize YouTube branding
-                        'iv_load_policy': 3, // Hide video annotations
-                        'fs': 0, // Disable fullscreen button
-                        'playsinline': 1, // Play inline on mobile
-                        'origin': window.location.origin
-                    },
-                    events: {
-                        'onReady': function(event) {
-                            event.target.playVideo();
-                            // Set volume to 100%
-                            event.target.setVolume(100);
+                try {
+                    youtubePlayer = new YT.Player('youtube-player', {
+                        height: '0',
+                        width: '0',
+                        videoId: videoId,
+                        playerVars: {
+                            'autoplay': 1,
+                            'controls': 0,
+                            'disablekb': 1,
+                            'enablejsapi': 1,
+                            'loop': 1,
+                            'playlist': videoId,
+                            'rel': 0,
+                            'showinfo': 0,
+                            'modestbranding': 1,
+                            'iv_load_policy': 3,
+                            'fs': 0,
+                            'playsinline': 1
                         },
-                        'onStateChange': function(event) {
-                            // If video ends, restart it
-                            if (event.data === YT.PlayerState.ENDED) {
+                        events: {
+                            'onReady': function(event) {
+                                youtubeInitialized = true;
                                 event.target.playVideo();
+                                event.target.setVolume(100);
+                            },
+                            'onStateChange': function(event) {
+                                if (event.data === YT.PlayerState.ENDED) {
+                                    event.target.playVideo();
+                                }
+                            },
+                            'onError': function(event) {
+                                console.error('YouTube player error:', event);
+                                youtubeInitialized = false;
+                                // Fallback to default audio
+                                if (defaultAudio) {
+                                    defaultAudio.play();
+                                }
                             }
                         }
+                    });
+                } catch (error) {
+                    console.error('Error initializing YouTube player:', error);
+                    youtubeInitialized = false;
+                    // Fallback to default audio
+                    if (defaultAudio) {
+                        defaultAudio.play();
                     }
-                });
+                }
             };
 
             // If YT is already loaded, initialize player immediately
             if (window.YT && window.YT.Player) {
                 window.onYouTubeIframeAPIReady();
             }
+
+            // Set a timeout to check if YouTube initialized successfully
+            setTimeout(() => {
+                if (!youtubeInitialized && defaultAudio) {
+                    console.log('YouTube failed to initialize, using default audio');
+                    defaultAudio.play();
+                }
+            }, 5000);
         }
     }
 }
@@ -732,16 +757,28 @@ startBtn.addEventListener('click', () => {
     startScreen.style.display = 'none';
     audioControl.style.display = 'block';
     responseButtons.style.display = 'block';
+
+    // If YouTube is not initialized, play default audio
+    const youtubePlayer = document.getElementById('youtube-player');
+    if (!youtubePlayer || !youtubePlayer.querySelector('iframe')) {
+        const defaultAudio = document.getElementById('background-music');
+        if (defaultAudio) {
+            defaultAudio.play();
+        }
+    }
+    
     triggerAnimation();
 });
 
 audioControl.addEventListener('click', () => {
-    if (customYoutubeLink) {
+    const youtubePlayer = document.getElementById('youtube-player');
+    const defaultAudio = document.getElementById('background-music');
+
+    if (youtubePlayer && youtubePlayer.querySelector('iframe')) {
         // Handle YouTube audio
-        const player = document.getElementById('youtube-player');
-        if (player) {
-            const iframe = player.querySelector('iframe');
-            if (iframe) {
+        const iframe = youtubePlayer.querySelector('iframe');
+        if (iframe) {
+            try {
                 const player = iframe.contentWindow;
                 if (audioControl.textContent === 'Pause Music') {
                     player.postMessage('{"event":"command","func":"pauseVideo","args":""}', '*');
@@ -750,19 +787,28 @@ audioControl.addEventListener('click', () => {
                     player.postMessage('{"event":"command","func":"playVideo","args":""}', '*');
                     audioControl.textContent = 'Pause Music';
                 }
+            } catch (error) {
+                console.error('Error controlling YouTube player:', error);
+                // Fallback to default audio
+                if (defaultAudio) {
+                    if (defaultAudio.paused) {
+                        defaultAudio.play();
+                        audioControl.textContent = 'Pause Music';
+                    } else {
+                        defaultAudio.pause();
+                        audioControl.textContent = 'Play Music';
+                    }
+                }
             }
         }
-    } else {
+    } else if (defaultAudio) {
         // Handle default audio
-        const audio = document.getElementById('background-music');
-        if (audio) {
-            if (audio.paused) {
-                audio.play();
-                audioControl.textContent = 'Pause Music';
-            } else {
-                audio.pause();
-                audioControl.textContent = 'Play Music';
-            }
+        if (defaultAudio.paused) {
+            defaultAudio.play();
+            audioControl.textContent = 'Pause Music';
+        } else {
+            defaultAudio.pause();
+            audioControl.textContent = 'Play Music';
         }
     }
 });
