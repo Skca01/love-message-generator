@@ -122,6 +122,12 @@ if (messageId) {
                     ending: customEndingMessage,
                     youtube: customYoutubeLink
                 });
+
+                // Update start screen message
+                const hintText = document.querySelector('.hint-text');
+                if (hintText) {
+                    hintText.textContent = customIntroMessage;
+                }
                 
                 // Handle YouTube music
                 if (customYoutubeLink) {
