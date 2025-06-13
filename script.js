@@ -20,6 +20,9 @@ try {
 const db = firebase.firestore();
 const storage = firebase.storage();
 
+// Global variables
+let customAudio = null;
+
 // DOM Elements for settings
 const settingsPanel = document.getElementById('settings-panel');
 const introMessageInput = document.getElementById('intro-message');
@@ -306,8 +309,6 @@ if (messageId) {
     loadingDiv.style.zIndex = '1000';
     loadingDiv.textContent = 'Loading your message...';
     document.body.appendChild(loadingDiv);
-
-    let customAudio = null;
 
     db.collection('messages').doc(messageId).get()
         .then((doc) => {
@@ -895,6 +896,7 @@ startBtn.addEventListener('click', async () => {
 
         startScreen.style.display = 'none';
         responseButtons.style.display = 'block';
+        triggerAnimation();
     } catch (error) {
         console.error('Error in start button handler:', error);
     }
