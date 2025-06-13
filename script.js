@@ -109,10 +109,12 @@ function setupAudio(youtubeLink) {
             document.body.appendChild(playerDiv);
 
             // Load YouTube API
-            const tag = document.createElement('script');
-            tag.src = "https://www.youtube.com/iframe_api";
-            const firstScriptTag = document.getElementsByTagName('script')[0];
-            firstScriptTag.parentNode.insertBefore(tag, firstScriptTag);
+            if (!window.YT) {
+                const tag = document.createElement('script');
+                tag.src = "https://www.youtube.com/iframe_api";
+                const firstScriptTag = document.getElementsByTagName('script')[0];
+                firstScriptTag.parentNode.insertBefore(tag, firstScriptTag);
+            }
 
             // Initialize YouTube player
             window.onYouTubeIframeAPIReady = function() {
@@ -126,15 +128,35 @@ function setupAudio(youtubeLink) {
                         'disablekb': 1,
                         'enablejsapi': 1,
                         'loop': 1,
-                        'playlist': videoId
+                        'playlist': videoId,
+                        'rel': 0, // Don't show related videos
+                        'showinfo': 0, // Don't show video title
+                        'modestbranding': 1, // Minimize YouTube branding
+                        'iv_load_policy': 3, // Hide video annotations
+                        'fs': 0, // Disable fullscreen button
+                        'playsinline': 1, // Play inline on mobile
+                        'origin': window.location.origin
                     },
                     events: {
                         'onReady': function(event) {
                             event.target.playVideo();
+                            // Set volume to 100%
+                            event.target.setVolume(100);
+                        },
+                        'onStateChange': function(event) {
+                            // If video ends, restart it
+                            if (event.data === YT.PlayerState.ENDED) {
+                                event.target.playVideo();
+                            }
                         }
                     }
                 });
             };
+
+            // If YT is already loaded, initialize player immediately
+            if (window.YT && window.YT.Player) {
+                window.onYouTubeIframeAPIReady();
+            }
         }
     }
 }
@@ -179,7 +201,7 @@ if (messageId) {
                     hintText.textContent = customIntroMessage;
                 }
 
-                // Setup audio
+                // Setup audio immediately
                 setupAudio(customYoutubeLink);
                 
                 // Hide settings panel and loading message
@@ -710,15 +732,6 @@ startBtn.addEventListener('click', () => {
     startScreen.style.display = 'none';
     audioControl.style.display = 'block';
     responseButtons.style.display = 'block';
-    
-    // Only play default audio if no YouTube link is provided
-    if (!customYoutubeLink) {
-        const audio = document.getElementById('background-music');
-        if (audio) {
-            audio.play();
-        }
-    }
-    
     triggerAnimation();
 });
 
