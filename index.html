@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Romantic Heart Hologram</title>
+    <link href="https://fonts.googleapis.com/css2?family=Dancing+Script:wght@400;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div id="settings-panel" class="settings-panel">
+        <h2>Customize Your Message</h2>
+        <div class="settings-form">
+            <div class="form-group">
+                <label for="intro-message">Intro Message:</label>
+                <input type="text" id="intro-message" placeholder="Hey love, this is for you...">
+            </div>
+            <div class="form-group">
+                <label for="ending-message">Ending Message:</label>
+                <input type="text" id="ending-message" placeholder="Always yours, [Your Name] ❤️">
+            </div>
+            <div class="form-group">
+                <label for="youtube-link">YouTube Music Link:</label>
+                <input type="text" id="youtube-link" placeholder="https://www.youtube.com/watch?v=...">
+            </div>
+            <button id="save-settings" class="save-btn">Save & Generate Link</button>
+        </div>
+        <div id="share-link" class="share-link" style="display: none;">
+            <p>Share this link with your loved one:</p>
+            <input type="text" id="generated-link" readonly>
+            <button id="copy-link" class="copy-btn">Copy Link</button>
+        </div>
+    </div>
+
+    <audio id="background-music" loop preload="auto">
+        <source src="taylor.mp3" type="audio/mpeg">
+        Your browser does not support the audio element.
+    </audio>
+    <div id="start-screen" class="start-screen">
+        <button id="start-btn" class="start-btn">Start</button>
+        <p class="hint-text">Sig pa suya ang Petchay🙄hahaha</p>
+    </div>
+    <button id="audio-control" class="audio-btn" style="display: none;">Pause Music</button>
+    <div id="response-buttons" class="response-buttons" style="display: none;">
+        <button id="yes-btn" class="response-btn yes-btn">Yes</button>
+        <button id="no-btn" class="response-btn no-btn">No</button>
+    </div>
+
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+    
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r134/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.134.0/examples/js/controls/OrbitControls.js"></script>
+    <script src="script.js"></script>
+</body>
+</html>
