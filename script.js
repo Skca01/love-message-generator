@@ -48,7 +48,45 @@ function updateCenterMessage() {
     if (centerSprite) {
         heartGroup.remove(centerSprite);
     }
-    createCenterMessage();
+
+    const canvas = document.createElement('canvas');
+    canvas.width = 650;
+    canvas.height = 280;
+    const ctx = canvas.getContext('2d');
+    ctx.font = 'bold 32px "Dancing Script"';
+    ctx.fillStyle = 'rgba(255, 102, 178, 0.9)';
+    ctx.shadowColor = '#ff3399';
+    ctx.shadowBlur = 15;
+    ctx.textAlign = 'center';
+    
+    // Split messages into lines and draw them
+    const introLines = customIntroMessage.split('\n');
+    const endingLines = customEndingMessage.split('\n');
+    
+    let y = 80;
+    introLines.forEach(line => {
+        ctx.fillText(line, 325, y);
+        y += 50;
+    });
+    
+    y += 20;
+    endingLines.forEach(line => {
+        ctx.fillText(line, 325, y);
+        y += 50;
+    });
+
+    const texture = new THREE.CanvasTexture(canvas);
+    texture.needsUpdate = true;
+    const material = new THREE.SpriteMaterial({
+        map: texture,
+        transparent: true,
+        opacity: 0,
+        blending: THREE.AdditiveBlending
+    });
+    centerSprite = new THREE.Sprite(material);
+    centerSprite.position.set(0, 0, 0);
+    centerSprite.scale.set(1.8, 0.8, 1);
+    heartGroup.add(centerSprite);
 }
 
 // Load custom settings if viewing a shared link
@@ -97,15 +135,42 @@ if (messageId) {
                             existingIframe.remove();
                         }
                         
-                        // Create new YouTube iframe
-                        const iframe = document.createElement('iframe');
-                        iframe.width = '0';
-                        iframe.height = '0';
-                        iframe.src = `https://www.youtube.com/embed/${videoId}?autoplay=1&controls=0&enablejsapi=1`;
-                        iframe.allow = 'accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture';
-                        iframe.id = 'youtube-player';
-                        document.body.appendChild(iframe);
-                        console.log("YouTube iframe created with video ID:", videoId);
+                        // Create YouTube player container
+                        const playerDiv = document.createElement('div');
+                        playerDiv.id = 'youtube-player';
+                        playerDiv.style.position = 'fixed';
+                        playerDiv.style.bottom = '20px';
+                        playerDiv.style.right = '20px';
+                        playerDiv.style.zIndex = '1000';
+                        document.body.appendChild(playerDiv);
+
+                        // Load YouTube API
+                        const tag = document.createElement('script');
+                        tag.src = "https://www.youtube.com/iframe_api";
+                        const firstScriptTag = document.getElementsByTagName('script')[0];
+                        firstScriptTag.parentNode.insertBefore(tag, firstScriptTag);
+
+                        // Initialize YouTube player
+                        window.onYouTubeIframeAPIReady = function() {
+                            new YT.Player('youtube-player', {
+                                height: '0',
+                                width: '0',
+                                videoId: videoId,
+                                playerVars: {
+                                    'autoplay': 1,
+                                    'controls': 0,
+                                    'disablekb': 1,
+                                    'enablejsapi': 1,
+                                    'loop': 1,
+                                    'playlist': videoId
+                                },
+                                events: {
+                                    'onReady': function(event) {
+                                        event.target.playVideo();
+                                    }
+                                }
+                            });
+                        };
                     }
                 }
                 
