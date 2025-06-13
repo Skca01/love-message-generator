@@ -331,52 +331,10 @@ if (messageId) {
                     hintText.textContent = customIntroMessage;
                 }
 
-                // Create play button for shared link
-                const playButton = document.createElement('button');
-                playButton.textContent = '▶️ Play Music';
-                playButton.style.position = 'fixed';
-                playButton.style.bottom = '20px';
-                playButton.style.left = '50%';
-                playButton.style.transform = 'translateX(-50%)';
-                playButton.style.padding = '10px 20px';
-                playButton.style.borderRadius = '20px';
-                playButton.style.border = 'none';
-                playButton.style.background = 'rgba(255, 102, 178, 0.9)';
-                playButton.style.color = 'white';
-                playButton.style.cursor = 'pointer';
-                playButton.style.zIndex = '1000';
-                playButton.style.fontSize = '16px';
-                playButton.style.boxShadow = '0 2px 5px rgba(0,0,0,0.2)';
-                document.body.appendChild(playButton);
-
-                // Setup audio with play button
-                playButton.addEventListener('click', async () => {
-                    try {
-                        // Resume audio context if it was suspended
-                        if (audioCtx.state === 'suspended') {
-                            await audioCtx.resume();
-                        }
-
-                        if (data.musicSource === 'upload' && data.mp3Url) {
-                            console.log('Playing uploaded MP3:', data.mp3Url);
-                            customAudio = setupAudio(data);
-                            if (customAudio) {
-                                await customAudio.play();
-                                console.log('Custom audio started playing');
-                            }
-                        } else {
-                            setupAudio(data);
-                        }
-                        playButton.style.display = 'none';
-                    } catch (error) {
-                        console.error('Error playing audio:', error);
-                        // Fallback to default audio
-                        const defaultAudio = document.getElementById('background-music');
-                        if (defaultAudio) {
-                            defaultAudio.play().catch(console.error);
-                        }
-                    }
-                });
+                // Setup audio for later use
+                if (data.musicSource === 'upload' && data.mp3Url) {
+                    customAudio = setupAudio(data);
+                }
                 
                 // Hide settings panel and loading message
                 settingsPanel.style.display = 'none';
@@ -907,21 +865,39 @@ function triggerAnimation() {
     }
 }
 
-startBtn.addEventListener('click', () => {
-    startScreen.style.display = 'none';
-    audioControl.style.display = 'block';
-    responseButtons.style.display = 'block';
-
-    // If YouTube is not initialized, play default audio
-    const youtubePlayer = document.getElementById('youtube-player');
-    if (!youtubePlayer || !youtubePlayer.querySelector('iframe')) {
-        const defaultAudio = document.getElementById('background-music');
-        if (defaultAudio) {
-            defaultAudio.play();
+startBtn.addEventListener('click', async () => {
+    try {
+        // Resume audio context if it was suspended
+        if (audioCtx.state === 'suspended') {
+            await audioCtx.resume();
         }
+
+        // Try to play custom audio if available
+        if (customAudio) {
+            try {
+                await customAudio.play();
+                console.log('Custom audio started playing');
+            } catch (error) {
+                console.error('Error playing custom audio:', error);
+                // Fallback to default audio
+                const defaultAudio = document.getElementById('background-music');
+                if (defaultAudio) {
+                    defaultAudio.play().catch(console.error);
+                }
+            }
+        } else {
+            // Use default audio if no custom audio
+            const defaultAudio = document.getElementById('background-music');
+            if (defaultAudio) {
+                defaultAudio.play().catch(console.error);
+            }
+        }
+
+        startScreen.style.display = 'none';
+        responseButtons.style.display = 'block';
+    } catch (error) {
+        console.error('Error in start button handler:', error);
     }
-    
-    triggerAnimation();
 });
 
 audioControl.addEventListener('click', () => {
