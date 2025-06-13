@@ -10,7 +10,13 @@ const firebaseConfig = {
 };
 
 // Initialize Firebase
-firebase.initializeApp(firebaseConfig);
+try {
+    firebase.initializeApp(firebaseConfig);
+    console.log("Firebase initialized successfully");
+} catch (error) {
+    console.error("Firebase initialization error:", error);
+}
+
 const db = firebase.firestore();
 
 // DOM Elements for settings
@@ -32,30 +38,66 @@ let customIntroMessage = "Do I still have a chance?💕";
 let customEndingMessage = "I know its a misunderstanding\nbut my heart is still yours.\nSuwayig \"No\" gaan tikag singko hahaha";
 let customYoutubeLink = "";
 
+// Function to update the center message
+function updateCenterMessage() {
+    console.log("Updating center message with:", {
+        intro: customIntroMessage,
+        ending: customEndingMessage
+    });
+    
+    if (centerSprite) {
+        heartGroup.remove(centerSprite);
+    }
+    createCenterMessage();
+}
+
 // Load custom settings if viewing a shared link
 if (messageId) {
     console.log("Loading message with ID:", messageId);
+    
+    // Show loading state
+    const loadingDiv = document.createElement('div');
+    loadingDiv.style.position = 'fixed';
+    loadingDiv.style.top = '50%';
+    loadingDiv.style.left = '50%';
+    loadingDiv.style.transform = 'translate(-50%, -50%)';
+    loadingDiv.style.background = 'rgba(255, 255, 255, 0.9)';
+    loadingDiv.style.padding = '20px';
+    loadingDiv.style.borderRadius = '10px';
+    loadingDiv.style.zIndex = '1000';
+    loadingDiv.textContent = 'Loading your message...';
+    document.body.appendChild(loadingDiv);
+
     db.collection('messages').doc(messageId).get()
         .then((doc) => {
             if (doc.exists) {
                 const data = doc.data();
-                console.log("Loaded data:", data);
+                console.log("Loaded data from Firebase:", data);
                 
+                // Update custom messages
                 customIntroMessage = data.introMessage || customIntroMessage;
                 customEndingMessage = data.endingMessage || customEndingMessage;
                 customYoutubeLink = data.youtubeLink || "";
                 
-                console.log("Custom messages set to:", {
+                console.log("Updated custom messages:", {
                     intro: customIntroMessage,
                     ending: customEndingMessage,
                     youtube: customYoutubeLink
                 });
                 
+                // Handle YouTube music
                 if (customYoutubeLink) {
                     const videoId = getYouTubeId(customYoutubeLink);
-                    console.log("YouTube video ID:", videoId);
+                    console.log("Extracted YouTube video ID:", videoId);
+                    
                     if (videoId) {
-                        // Create YouTube iframe
+                        // Remove existing YouTube iframe if any
+                        const existingIframe = document.getElementById('youtube-player');
+                        if (existingIframe) {
+                            existingIframe.remove();
+                        }
+                        
+                        // Create new YouTube iframe
                         const iframe = document.createElement('iframe');
                         iframe.width = '0';
                         iframe.height = '0';
@@ -63,28 +105,26 @@ if (messageId) {
                         iframe.allow = 'accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture';
                         iframe.id = 'youtube-player';
                         document.body.appendChild(iframe);
-                        
-                        // Add event listener for when iframe is ready
-                        window.onYouTubeIframeAPIReady = function() {
-                            console.log("YouTube API Ready");
-                        };
+                        console.log("YouTube iframe created with video ID:", videoId);
                     }
                 }
                 
-                // Hide settings panel when viewing shared link
+                // Hide settings panel and loading message
                 settingsPanel.style.display = 'none';
+                loadingDiv.remove();
                 
-                // Recreate center message with new custom messages
-                if (centerSprite) {
-                    heartGroup.remove(centerSprite);
-                }
-                createCenterMessage();
+                // Update the center message
+                updateCenterMessage();
             } else {
-                console.log("No such document!");
+                console.error("No document found with ID:", messageId);
+                loadingDiv.textContent = 'Message not found. Please check the link.';
+                setTimeout(() => loadingDiv.remove(), 3000);
             }
         })
         .catch((error) => {
             console.error("Error loading message:", error);
+            loadingDiv.textContent = 'Error loading message. Please try again.';
+            setTimeout(() => loadingDiv.remove(), 3000);
         });
 } else {
     // Show settings panel only when creating new message
@@ -93,10 +133,16 @@ if (messageId) {
 
 // Helper function to extract YouTube video ID
 function getYouTubeId(url) {
-    if (!url) return null;
+    if (!url) {
+        console.log("No YouTube URL provided");
+        return null;
+    }
+    console.log("Processing YouTube URL:", url);
     const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|&v=)([^#&?]*).*/;
     const match = url.match(regExp);
-    return (match && match[2].length === 11) ? match[2] : null;
+    const videoId = (match && match[2].length === 11) ? match[2] : null;
+    console.log("Extracted video ID:", videoId);
+    return videoId;
 }
 
 // Save settings and generate share link
@@ -122,22 +168,13 @@ saveSettingsBtn.addEventListener('click', async () => {
         console.log("Document written with ID:", docRef.id);
 
         const shareUrl = `${window.location.origin}${window.location.pathname}?id=${docRef.id}`;
+        console.log("Generated share URL:", shareUrl);
         generatedLinkInput.value = shareUrl;
         shareLinkDiv.style.display = 'block';
     } catch (error) {
         console.error("Error saving message:", error);
         alert("Error saving your message. Please try again.");
     }
-});
-
-// Copy link to clipboard
-copyLinkBtn.addEventListener('click', () => {
-    generatedLinkInput.select();
-    document.execCommand('copy');
-    copyLinkBtn.textContent = 'Copied!';
-    setTimeout(() => {
-        copyLinkBtn.textContent = 'Copy Link';
-    }, 2000);
 });
 
 const scene = new THREE.Scene();
