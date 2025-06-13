@@ -81,6 +81,64 @@ function updateCenterMessage() {
     heartGroup.add(centerSprite);
 }
 
+// Function to handle audio
+function setupAudio(youtubeLink) {
+    // Remove default audio element
+    const defaultAudio = document.getElementById('background-music');
+    if (defaultAudio) {
+        defaultAudio.pause();
+        defaultAudio.remove();
+    }
+
+    // Remove existing YouTube player if any
+    const existingPlayer = document.getElementById('youtube-player');
+    if (existingPlayer) {
+        existingPlayer.remove();
+    }
+
+    if (youtubeLink) {
+        const videoId = getYouTubeId(youtubeLink);
+        if (videoId) {
+            // Create YouTube player container
+            const playerDiv = document.createElement('div');
+            playerDiv.id = 'youtube-player';
+            playerDiv.style.position = 'fixed';
+            playerDiv.style.bottom = '20px';
+            playerDiv.style.right = '20px';
+            playerDiv.style.zIndex = '1000';
+            document.body.appendChild(playerDiv);
+
+            // Load YouTube API
+            const tag = document.createElement('script');
+            tag.src = "https://www.youtube.com/iframe_api";
+            const firstScriptTag = document.getElementsByTagName('script')[0];
+            firstScriptTag.parentNode.insertBefore(tag, firstScriptTag);
+
+            // Initialize YouTube player
+            window.onYouTubeIframeAPIReady = function() {
+                new YT.Player('youtube-player', {
+                    height: '0',
+                    width: '0',
+                    videoId: videoId,
+                    playerVars: {
+                        'autoplay': 1,
+                        'controls': 0,
+                        'disablekb': 1,
+                        'enablejsapi': 1,
+                        'loop': 1,
+                        'playlist': videoId
+                    },
+                    events: {
+                        'onReady': function(event) {
+                            event.target.playVideo();
+                        }
+                    }
+                });
+            };
+        }
+    }
+}
+
 // Load custom settings if viewing a shared link
 if (messageId) {
     console.log("Loading message with ID:", messageId);
@@ -121,62 +179,8 @@ if (messageId) {
                     hintText.textContent = customIntroMessage;
                 }
 
-                // Remove default audio if YouTube music is provided
-                if (customYoutubeLink) {
-                    const defaultAudio = document.getElementById('background-music');
-                    if (defaultAudio) {
-                        defaultAudio.pause();
-                        defaultAudio.remove();
-                    }
-                    
-                    const videoId = getYouTubeId(customYoutubeLink);
-                    console.log("Extracted YouTube video ID:", videoId);
-                    
-                    if (videoId) {
-                        // Remove existing YouTube iframe if any
-                        const existingIframe = document.getElementById('youtube-player');
-                        if (existingIframe) {
-                            existingIframe.remove();
-                        }
-                        
-                        // Create YouTube player container
-                        const playerDiv = document.createElement('div');
-                        playerDiv.id = 'youtube-player';
-                        playerDiv.style.position = 'fixed';
-                        playerDiv.style.bottom = '20px';
-                        playerDiv.style.right = '20px';
-                        playerDiv.style.zIndex = '1000';
-                        document.body.appendChild(playerDiv);
-
-                        // Load YouTube API
-                        const tag = document.createElement('script');
-                        tag.src = "https://www.youtube.com/iframe_api";
-                        const firstScriptTag = document.getElementsByTagName('script')[0];
-                        firstScriptTag.parentNode.insertBefore(tag, firstScriptTag);
-
-                        // Initialize YouTube player
-                        window.onYouTubeIframeAPIReady = function() {
-                            new YT.Player('youtube-player', {
-                                height: '0',
-                                width: '0',
-                                videoId: videoId,
-                                playerVars: {
-                                    'autoplay': 1,
-                                    'controls': 0,
-                                    'disablekb': 1,
-                                    'enablejsapi': 1,
-                                    'loop': 1,
-                                    'playlist': videoId
-                                },
-                                events: {
-                                    'onReady': function(event) {
-                                        event.target.playVideo();
-                                    }
-                                }
-                            });
-                        };
-                    }
-                }
+                // Setup audio
+                setupAudio(customYoutubeLink);
                 
                 // Hide settings panel and loading message
                 settingsPanel.style.display = 'none';
@@ -702,15 +706,51 @@ function triggerAnimation() {
     }
 }
 
-startBtn.addEventListener('click', triggerAnimation);
+startBtn.addEventListener('click', () => {
+    startScreen.style.display = 'none';
+    audioControl.style.display = 'block';
+    responseButtons.style.display = 'block';
+    
+    // Only play default audio if no YouTube link is provided
+    if (!customYoutubeLink) {
+        const audio = document.getElementById('background-music');
+        if (audio) {
+            audio.play();
+        }
+    }
+    
+    triggerAnimation();
+});
 
 audioControl.addEventListener('click', () => {
-    if (audio.paused) {
-        playAudio();
-        audioControl.textContent = 'Pause Music';
+    if (customYoutubeLink) {
+        // Handle YouTube audio
+        const player = document.getElementById('youtube-player');
+        if (player) {
+            const iframe = player.querySelector('iframe');
+            if (iframe) {
+                const player = iframe.contentWindow;
+                if (audioControl.textContent === 'Pause Music') {
+                    player.postMessage('{"event":"command","func":"pauseVideo","args":""}', '*');
+                    audioControl.textContent = 'Play Music';
+                } else {
+                    player.postMessage('{"event":"command","func":"playVideo","args":""}', '*');
+                    audioControl.textContent = 'Pause Music';
+                }
+            }
+        }
     } else {
-        audio.pause();
-        audioControl.textContent = 'Play Music';
+        // Handle default audio
+        const audio = document.getElementById('background-music');
+        if (audio) {
+            if (audio.paused) {
+                audio.play();
+                audioControl.textContent = 'Pause Music';
+            } else {
+                audio.pause();
+                audioControl.textContent = 'Play Music';
+            }
+        }
     }
 });
 
